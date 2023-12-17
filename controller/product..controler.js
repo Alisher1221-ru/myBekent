@@ -24,7 +24,7 @@ async function postControler(req, res) {
             throw err
         }
         const addProducts = await db.query("INSERT INTO products (name, price, img, title) VALUE (?, ?, ?, ?)", [name, price, img, title])
-        res.json(addProducts)
+        res.json('good')
     } catch (error) {
         res.status(401).json("error in "+ error.message)
     }

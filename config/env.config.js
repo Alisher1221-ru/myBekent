@@ -8,7 +8,9 @@ const env = cleanEnv(process.env, {
     DB_PORT: str(),
     DB_USER: str(),
     DB_PASSWORD: str(),
-    DB_DATABASE: str()
+    DB_DATABASE: str(),
+    REFRESH_TOKEN: str(),
+    ACCESS_TOKEN: str()
 })
 
 export default env
