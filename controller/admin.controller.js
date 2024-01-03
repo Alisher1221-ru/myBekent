@@ -9,21 +9,22 @@ async function signin(req,res) {
         const {email, password} = req.body
         if (!email || !password) {
             const error = new Error("error is | you didn't specify a user")
-            error.status = 401
+            error.status = 404
             throw error 
         }
         const heshingpasswort = hashSync(password, 2)
         const [[user]] = await db.query("SELECT * FROM loginadmin WHERE email = ?", email)
         if (user) {
             const error = new Error("error is | the user already exists")
-            error.status = 401
+            error.status = 404
             throw error 
         }
         const [{insertId}] = await db.query("INSERT INTO loginadmin (email, password, role) VALUES (?, ?, ?)", [email, heshingpasswort, "user"])
-        const refresh_token = sign({id: insertId, role: user.role}, env.REFRESH_TOKEN, {expiresIn: "10day"})
-        const access_token = sign({id: insertId, role: user.role}, env.ACCESS_TOKEN, {expiresIn: "15m"})
-        db.query("UPDATE loginadmin SET refreshToken = ? WHERE id = ?", [refresh_token, insertId])
-        res.json(refresh_token, access_token)
+        const refresh_token = sign({id: insertId, role: "user"}, env.REFRESH_TOKEN, {expiresIn: "60day"})
+        const access_token = sign({id: insertId, role: "user"}, env.ACCESS_TOKEN, {expiresIn: "15m"})
+        const hashingToken = hashSync(refresh_token, 2)
+        db.query("UPDATE loginadmin SET refreshToken = ? WHERE id = ?", [hashingToken, insertId])
+        res.json({refresh_token, access_token})
     } catch (error) {
         res.status(500).json({ error:error.message })
     }
@@ -49,7 +50,7 @@ async function login(req,res) {
             error.status = 404
             throw error 
         }
-        const refresh_token = sign({id: user.id, role: user.role}, env.REFRESH_TOKEN, {expiresIn: "10day"})
+        const refresh_token = sign({id: user.id, role: user.role}, env.REFRESH_TOKEN, {expiresIn: "60day"})
         const access_token = sign({id: user.id, role: user.role}, env.ACCESS_TOKEN, {expiresIn: "15m"})
         const hashedRefresh = hashSync(refresh_token, 2)
 
@@ -63,26 +64,25 @@ async function login(req,res) {
 
 async function refresh(req,res) {
     try {
-        const {accessToken, refreshToken} = req.body
+        const {refreshToken} = req.body
         if (!refreshToken) {
             const error = new Error("error is | token has expired")
             error.status = 401
             throw error
         }
-        const {id, role} = verify(accessToken, env.ACCESS_TOKEN)
-        const [[user]] = await db.query("SELECT * FROM loginadmin WHERE id = ?", id)
+        const {id} = verify(refreshToken, env.REFRESH_TOKEN)
+        const [[user]] = await db.query("SELECT * FROM loginadmin WHERE id = ? ", id)
         if (!user) {
             const error = new Error("error is | the user already exists")
             error.status = 401
             throw error
         }
-        const access_token = sign({id, role}, env.ACCESS_TOKEN, {expiresIn:"15m"})
+        const access_token = sign({id}, env.ACCESS_TOKEN, {expiresIn:"15m"})
         res.json({access_token, refreshToken})
     } catch (error) {
-        res.status(500).json({error: error.message})
+        res.status(404).json({error: error.message})
     }
 }
-
 
 async function logout(req, res) {
     try {
@@ -92,10 +92,39 @@ async function logout(req, res) {
             error.status = 401
             throw error
         }
-        const {id} = verify(refreshToken, env.REFRESH_TOKEN)
+        const {id, role} = verify(refreshToken, env.REFRESH_TOKEN)
         await db.query("UPDATE loginadmin SET refreshToken = ? WHERE id = ?",
         [null, id])
-        res.json(id)
+        res.json('logout')
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
+}
+
+async function getUsers(req, res) {
+    try {
+        const [user] = await db.query("SELECT * FROM loginadmin")
+        if (!user) {
+            const error = new Error("no users found")
+            error.status = 402
+            throw error
+        }
+        res.json(user)
+    } catch (error) {
+        res.status(500).json({error: error.message})
+    }
+}
+
+async function getUser(req, res) {
+    try {
+        const id = req.params.id
+        const [[user]] = await db.query("SELECT * FROM loginadmin WHERE id = ?", id)
+        if (!user) {
+            const error = new Error("no user found")
+            error.status = 402
+            throw error
+        }
+        res.json(user)
     } catch (error) {
         res.status(500).json({error: error.message})
     }
@@ -105,5 +134,7 @@ export {
     login,
     signin,
     refresh,
-    logout
+    logout,
+    getUsers,
+    getUser
 }

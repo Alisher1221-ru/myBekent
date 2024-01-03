@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { deleteControler, getControler, postControler, updateControler } from "../controller/product..controler.js";
-import Role from "../examination/Role.guard.js";
+import { deleteControler, getProducts, getProduct, postControler, updateControler } from "../controller/product..controler.js";
+import authGuard from "../examination/Auth.guard.js";
+import RoleGuart from "../examination/Role.guard.js";
 
 const productServer = Router()
 
-productServer.get('/', getControler)
-productServer.post('/', Role("Admins@gmail.com"), postControler)
-productServer.patch('/', Role('Admins@gmail.com'), updateControler)
-productServer.delete('/', Role('Admins@gmail.com'), deleteControler)
-
+productServer.get('/:id', getProduct)
+productServer.get('/', getProducts)
+productServer.post('/', authGuard, RoleGuart, postControler)
+productServer.patch('/:id', authGuard, RoleGuart, updateControler)
+productServer.delete('/:id', authGuard, RoleGuart, deleteControler)
 
 export default productServer
