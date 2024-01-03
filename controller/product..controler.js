@@ -1,30 +1,55 @@
 import db from "../config/db.config.js"
 
-async function getControler(req, res) {
+async function getProducts(req, res) {
     try {
-        const [product] = await db.query("SELECT * FROM products") 
+        const [product] = await db.query("SELECT * FROM product") 
+        if (!product){
+            const error = new Error("error product not found")
+            error.status = 402
+            throw error
+        }
         res.json(product)
     } catch (error) {
         res.status(401).json("error in "+ error.message)
     }
 }
 
+async function getProduct(req, res) {
+    try {
+        const id = req.params.id
+        if (!Math.floor(id) === id) {
+            const error = new Error("id is not defined")
+            error.status = 403
+            throw error
+        }
+        const [[product]] = await db.query("SELECT * FROM product WHERE id = ?", id)
+        if (!product) {
+            const error = new Error("product is not defined")
+            error.status = 403
+            throw error
+        }
+        res.json(product)
+    } catch (error) {
+        res.status(403).json({error: error.message})
+    }
+}
+
 async function postControler(req, res) {
     try {
-        const {name, price, img, title} = req.body
-        if (!name || !price || !img || !title) {
+        const {name, price, img, title, status} = req.body
+        if (!name || !price || !img || !title || !status) {
             const err = new Error("error in "+ err.message)
             err.status = 400
             throw err
         }
-        const [[product]] = await db.query("SELECT * FROM products WHERE name = ? OR title = ?", [name, title])
+        const [[product]] = await db.query("SELECT * FROM product WHERE name = ? OR title = ?", [name, title])
         if (product) {
             const err = new Error("error in "+ err.message)
             err.status = 400
             throw err
         }
-        const addProducts = await db.query("INSERT INTO products (name, price, img, title) VALUE (?, ?, ?, ?)", [name, price, img, title])
-        res.json('good')
+        await db.query("INSERT INTO product SET ?", {name, price, img, title, status})
+        res.json('product created')
     } catch (error) {
         res.status(401).json("error in "+ error.message)
     }
@@ -32,21 +57,21 @@ async function postControler(req, res) {
 
 async function updateControler(req, res) {
     try {
-        const {name, price, img, title} = req.body
-        if (!name ||!price ||!img ||!title) {
+        const body = req.body
+        if (!body) {
             const err = new Error("error in "+ err.message)
             err.status = 401
             throw err
         }
-        const querys = req.query.name;
-        const [[updateProducts]] = await db.query("SELECT * FROM products WHERE name = ?", [querys])
-        if (!updateProducts) {
+        const id = req.params.id;
+        const [[product]] = await db.query("SELECT * FROM product WHERE id = ?", id)
+        if (!product) {
             const err = new Error("error in "+ err.message)
             err.status = 401
             throw err
         }
-        res.json('good')
-        db.query("UPDATE products SET name = ?, price = ?, img = ?, title = ? WHERE id = ?", [name, price, img, title, updateProducts.id])
+        await db.query("UPDATE product SET ? WHERE id = ?", [body, id])
+        res.json('product updated')
     } catch (error) {
         res.status(401).json("error in "+ error.message)
     }
@@ -54,27 +79,23 @@ async function updateControler(req, res) {
 
 async function deleteControler(req, res) {
     try {
-        const {name, price} = req.body
-        if (!name ||!price) {
+        const id = req.params.id
+        const [[product]] = await db.query("SELECT * FROM product WHERE id = ?", id)
+        if (!product) {
             const err = new Error("error in "+ err.message)
             err.status = 401
             throw err
         }
-        const [[daleteProducts]] = await db.query("SELECT * FROM products WHERE name = ?", name)
-        if (!daleteProducts) {
-            const err = new Error("error in "+ err.message)
-            err.status = 401
-            throw err
-        }
-        db.query("DELETE FROM products WHERE id = ?", daleteProducts.id)
-        res.json('good')
+        await db.query("DELETE FROM product WHERE id = ?", id)
+        res.json('product deleted')
     } catch (error) {
         res.status(401).json("error in "+ error.message)
     }
 }
 
 export {
-    getControler,
+    getProducts,
+    getProduct,
     postControler,
     updateControler,
     deleteControler

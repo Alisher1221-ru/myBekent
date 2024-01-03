@@ -1,23 +1,17 @@
-function Role(gmail) {
-    return function (req, res, next) {
-        try {
-            const { gmails } = req.body
-            if (!gmails) {
-                const error = "tel not faund"
-                error.status = 401
-                throw error
-            }
-            if (gmails === gmail) {
-                next()
-                return
-            }
-            const error = "tel is not faund"
-            error.status = 401
-            throw error
-        } catch (error) {
-            res.status(401).json({error: error.message})
+import pkg from 'jsonwebtoken';
+
+async function RoleGuart(req, res, next) {
+    try {
+        if (req.role === 'admin') {
+            next()
+            return
         }
+        const error = new Error("error you not admin")
+        error.status = 402
+        throw error
+    } catch (error) {
+        res.status(403).json({error: error.message})
     }
 }
 
-export default Role
+export default RoleGuart
